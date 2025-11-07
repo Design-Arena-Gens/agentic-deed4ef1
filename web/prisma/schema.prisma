@@ -1,0 +1,127 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum LeadSource {
+  FACEBOOK
+  GOOGLE
+  MANUAL
+  REFERRED
+  WEBSITE
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  DEMO_SCHEDULED
+  DEMO_COMPLETED
+  ENROLLED
+  CLOSED_LOST
+}
+
+enum InteractionType {
+  CALL
+  SMS
+  EMAIL
+  NOTE
+  WHATSAPP
+}
+
+enum CallDirection {
+  OUTBOUND
+  INBOUND
+}
+
+enum CallStatus {
+  INITIATED
+  RINGING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
+
+enum TaskStatus {
+  OPEN
+  COMPLETED
+  CANCELLED
+}
+
+model Lead {
+  id             String          @id @default(cuid())
+  externalId     String?         @unique
+  fullName       String?
+  guardianName   String?
+  phone          String?
+  alternatePhone String?
+  email          String?
+  targetExam     String?
+  source         LeadSource
+  status         LeadStatus      @default(NEW)
+  city           String?
+  notes          String?
+  metadata       Json?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  interactions   Interaction[]
+  calls          CallSession[]
+  tasks          Task[]
+}
+
+model Interaction {
+  id        String          @id @default(cuid())
+  lead      Lead            @relation(fields: [leadId], references: [id])
+  leadId    String
+  type      InteractionType
+  summary   String?
+  payload   Json?
+  createdAt DateTime        @default(now())
+}
+
+model CallSession {
+  id          String       @id @default(cuid())
+  lead        Lead         @relation(fields: [leadId], references: [id])
+  leadId      String
+  twilioSid   String?      @unique
+  direction   CallDirection
+  status      CallStatus   @default(INITIATED)
+  currentGoal String?
+  transcript  Json?
+  score       Int?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  logs        CallLog[]
+}
+
+model CallLog {
+  id           String      @id @default(cuid())
+  call         CallSession @relation(fields: [callSessionId], references: [id])
+  callSessionId String
+  role         String
+  message      String
+  createdAt    DateTime    @default(now())
+}
+
+model Task {
+  id        String      @id @default(cuid())
+  lead      Lead?       @relation(fields: [leadId], references: [id])
+  leadId    String?
+  title     String
+  status    TaskStatus @default(OPEN)
+  dueAt     DateTime?
+  createdAt DateTime   @default(now())
+  completedAt DateTime?
+  note      String?
+}
+
+model IntegrationState {
+  id        String   @id
+  value     Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
